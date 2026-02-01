@@ -2,7 +2,7 @@
 
 A lightweight macOS clipboard manager with first-class pinning support.
 
-![ClipPin Screenshot](screenshot.png)
+<img src="screenshot.png" width="600" alt="ClipPin Screenshot">
 
 ## Features
 
