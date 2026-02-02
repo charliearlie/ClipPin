@@ -1,0 +1,122 @@
+# .github/workflows/release.yml
+#
+# Automatically builds and releases ClipPin when you push a version tag.
+#
+# Usage:
+#   git tag v1.2.0
+#   git push origin v1.2.0
+#
+# This will create a GitHub Release with ClipPin-v1.2.0.zip attached.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on v1.0.0, v1.2.3, etc.
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write  # Required to create releases
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Import Certificate
+        env: 
+          CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+          CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          if [ -n "$CERTIFICATE_BASE64" ]; then
+            echo "Decoding certificate..."
+            echo $CERTIFICATE_BASE64 | base64 --decode > certificate.p12
+            
+            echo "Creating keychain..."
+            security create-keychain -p "" build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p "" build.keychain
+            
+            echo "Importing certificate..."
+            security import certificate.p12 -k build.keychain -P "$CERTIFICATE_PWD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+            
+            echo "Certificate imported."
+          else
+            echo "No MACOS_CERTIFICATE secret found. Skipping signing."
+          fi
+
+      - name: Build app
+        env:
+          CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CERTIFICATE_NAME }}
+        run: |
+          chmod +x package_app.sh
+          ./package_app.sh ${{ steps.version.outputs.VERSION }}
+
+      - name: Notarize App
+        if: ${{ env.CODE_SIGN_IDENTITY != '' }}
+        env:
+          AC_USERNAME: ${{ secrets.AC_USERNAME }}
+          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+          AC_TEAM_ID: ${{ secrets.AC_TEAM_ID }}
+        run: |
+          if [ -n "$AC_USERNAME" ] && [ -n "$AC_PASSWORD" ]; then
+            echo "Notarizing..."
+            
+            # Create a simplified Zip for notarization submission (notarytool expects a zip of the app)
+            # The package_app.sh already created a release zip, but let's be explicit or reuse
+            # package_app.sh creates "ClipPin-v${VERSION}.zip"
+            ZIP_FILENAME="ClipPin-v${{ steps.version.outputs.VERSION }}.zip"
+            
+            xcrun notarytool submit "$ZIP_FILENAME" \
+              --apple-id "$AC_USERNAME" \
+              --password "$AC_PASSWORD" \
+              --team-id "$AC_TEAM_ID" \
+              --wait
+              
+            echo "Notarization successful. Stapling ticket..."
+            xcrun stapler staple "ClipPin.app"
+            
+            # Re-zip the stapled app for release
+            rm "$ZIP_FILENAME"
+            ditto -c -k --keepParent ClipPin.app "$ZIP_FILENAME"
+            
+            # Re-calculate checksum since zip changed
+            shasum -a 256 "$ZIP_FILENAME"
+          else
+            echo "Skipping Notarization (Missing AC_USERNAME or AC_PASSWORD)"
+          fi
+
+      - name: Verify build
+        run: |
+          if [ ! -f "ClipPin-v${{ steps.version.outputs.VERSION }}.zip" ]; then
+            echo "Build failed - zip file not found"
+            exit 1
+          fi
+          ls -la ClipPin-v${{ steps.version.outputs.VERSION }}.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ClipPin v${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          files: ClipPin-v${{ steps.version.outputs.VERSION }}.zip
+          body: |
+            ## Installation
+            
+            1. Download `ClipPin-v${{ steps.version.outputs.VERSION }}.zip` below
+            2. Unzip and move `ClipPin.app` to Applications
+            3. Right-click → Open (first launch only)
+            
+            ## Requirements
+            
+            - macOS 13.0 or later
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
