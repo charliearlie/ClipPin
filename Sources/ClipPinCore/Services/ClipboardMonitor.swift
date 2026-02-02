@@ -91,25 +91,37 @@ public class ClipboardMonitor: ObservableObject {
             if let newString = pasteboard.string(forType: .string) {
                 // Ignore duplicates if same as most recent
                 if let lastItem = recentItems.first, lastItem.type == .text, lastItem.content == newString {
-                     // Still increment usage count?
                      var updatedItem = lastItem
                      updatedItem.copyCount += 1
+                     updatedItem.timestamp = Date() // Update timestamp to reflect new activity
                      recentItems[0] = updatedItem
                      return
                 }
                 
-                // Do not add if it is already pinned?
+                // Do not add if it is already pinned
                 if let index = pinnedItems.firstIndex(where: { $0.type == .text && $0.content == newString }) {
+                     // Optionally move pinned item to top of pins? 
+                     // Or just ignore. User didn't request behavior change here.
                      return
                 }
 
-                // Check for duplicate in recent history that isn't the first item?
+                // Check for duplicate in recent history that isn't the first item
                 if let index = recentItems.firstIndex(where: { $0.type == .text && $0.content == newString }) {
-                    var existingItem = recentItems[index]
-                    existingItem.copyCount += 1
-                    existingItem.timestamp = Date()
+                    let existingItem = recentItems[index]
+                    
+                    // Create a FRESH item with new ID to force UI to see it as a new insertion
+                    // This solves potential View identity caching issues
+                    let newItem = ClipboardItem(
+                        content: newString,
+                        timestamp: Date(),
+                        copyCount: existingItem.copyCount + 1,
+                        contentType: existingItem.contentType ?? .plain,
+                        sensitiveType: existingItem.sensitiveType,
+                        pinSuggestionDismissed: existingItem.pinSuggestionDismissed
+                    )
+                    
                     recentItems.remove(at: index)
-                    recentItems.insert(existingItem, at: 0)
+                    recentItems.insert(newItem, at: 0)
                     return
                 }
 

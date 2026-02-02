@@ -23,6 +23,20 @@ A lightweight macOS clipboard manager with first-class pinning support.
 
 All data stored locally in `~/Library/Application Support/ClipPin/`. Nothing is sent to any server.
 
+## Troubleshooting
+
+**"ClipPin" is damaged and can't be opened.**  
+This is a standard macOS security warning for apps not from the App Store.
+1. Move the app to your `Applications` folder.
+2. Right-click the app and select **Open**.
+3. Click **Open** in the dialog box.
+(You only need to do this once).
+
+Alternatively, run this command in Terminal:
+```bash
+xattr -cr /Applications/ClipPin.app
+```
+
 ## Uninstall
 
 1. Quit ClipPin

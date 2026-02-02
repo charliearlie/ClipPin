@@ -53,7 +53,14 @@ chmod +x ClipPin.app/Contents/MacOS/ClipPin
 
 echo "✓ Built ClipPin.app (Release)"
 
-# 5. Package (Zip)
+echo "✓ Built ClipPin.app (Release)"
+
+# 5. Code Signing (Ad-hoc)
+# Required for Apple Silicon and to prevent immediate "Damaged" error
+echo "🔏 Code Signing (Ad-hoc)..."
+codesign --force --deep --sign - ClipPin.app
+
+# 6. Package (Zip)
 ZIP_NAME="ClipPin-v${VERSION}.zip"
 echo "🤐 Zipping to ${ZIP_NAME}..."
 ditto -c -k --keepParent ClipPin.app "${ZIP_NAME}"
