@@ -21,6 +21,9 @@ jobs:
     permissions:
       contents: write  # Required to create releases
     
+    env:
+      CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CERTIFICATE_NAME }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,8 +56,6 @@ jobs:
           fi
 
       - name: Build app
-        env:
-          CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CERTIFICATE_NAME }}
         run: |
           chmod +x package_app.sh
           ./package_app.sh ${{ steps.version.outputs.VERSION }}
