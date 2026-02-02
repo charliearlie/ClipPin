@@ -53,12 +53,19 @@ chmod +x ClipPin.app/Contents/MacOS/ClipPin
 
 echo "✓ Built ClipPin.app (Release)"
 
-echo "✓ Built ClipPin.app (Release)"
+# 5. Code Signing
+echo "🔏 Code Signing..."
 
-# 5. Code Signing (Ad-hoc)
-# Required for Apple Silicon and to prevent immediate "Damaged" error
-echo "🔏 Code Signing (Ad-hoc)..."
-codesign --force --deep --sign - ClipPin.app
+# Check if CODE_SIGN_IDENTITY env var is set
+if [ -n "$CODE_SIGN_IDENTITY" ]; then
+    echo "   Using Identity: $CODE_SIGN_IDENTITY"
+    codesign --force --options runtime --deep --timestamp --entitlements Sources/ClipPin/Entitlements.plist --sign "$CODE_SIGN_IDENTITY" ClipPin.app
+    echo "   ✓ Signed with Hardened Runtime"
+else
+    echo "   No CODE_SIGN_IDENTITY set. Using ad-hoc signing."
+    echo "   (To sign for release, run: CODE_SIGN_IDENTITY='Developer ID Application: ...' ./package_app.sh)"
+    codesign --force --deep --sign - ClipPin.app
+fi
 
 # 6. Package (Zip)
 ZIP_NAME="ClipPin-v${VERSION}.zip"

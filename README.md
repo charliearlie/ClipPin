@@ -25,10 +25,10 @@ All data stored locally in `~/Library/Application Support/ClipPin/`. Nothing is 
 
 ## Troubleshooting
 
-**"ClipPin" is damaged and can't be opened.**  
-This is a standard macOS security warning for apps not from the App Store.
+**"ClipPin is damaged"** or **"cannot check it for malicious software"**  
+These are standard macOS security warnings for apps not notarized by Apple.
 1. Move the app to your `Applications` folder.
-2. Right-click the app and select **Open**.
+2. **Right-click** the app and select **Open**.
 3. Click **Open** in the dialog box.
 (You only need to do this once).
 
